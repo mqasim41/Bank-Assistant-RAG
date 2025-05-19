@@ -1,5 +1,5 @@
 
-# Bank‑LLM Prototype (Deliverable #2)
+# Bank‑LLM Prototype
 
 Minimal end‑to‑end stack:
 
