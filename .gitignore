@@ -1,1 +1,4 @@
 .venv
+*.log
+data/
+vector_store/

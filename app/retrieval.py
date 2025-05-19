@@ -1,22 +1,27 @@
-
-import pickle, faiss, numpy as np
-from sentence_transformers import SentenceTransformer
+import faiss
+import pickle
 from pathlib import Path
+from sentence_transformers import SentenceTransformer
+from .logger import setup_logger
 
-EMBED_DIM = 768
-INDEX_PATH = Path("vector_store/faiss.index")
-META_PATH  = Path("vector_store/meta.pkl")
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+# Set up logger for this module
+logger = setup_logger("bank_llm.retrieval", "retrieval.log")
 
 class Retriever:
-    def __init__(self, k=4):
-        self.k = k
-        self.model = SentenceTransformer(MODEL_NAME)
-        self.index = faiss.read_index(str(INDEX_PATH))
-        with open(META_PATH, "rb") as f:
+    def __init__(self):
+        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.index = faiss.read_index("vector_store/faiss.index")
+        with open("vector_store/meta.pkl", "rb") as f:
             self.meta = pickle.load(f)
+        logger.info("Retriever initialized successfully")
 
-    def fetch(self, query: str):
-        q_emb = self.model.encode(query.lower(), convert_to_numpy=True)
-        scores, idx = self.index.search(q_emb.reshape(1, -1), self.k)
-        return [self.meta[i] for i in idx.flatten()]
+    def search(self, query: str, k: int = 5):
+        try:
+            query_emb = self.model.encode(query, convert_to_numpy=True)
+            scores, indices = self.index.search(query_emb.reshape(1, -1), k)
+            results = [self.meta[i] for i in indices[0]]
+            logger.debug(f"Retrieved {len(results)} results for query: {query}")
+            return results
+        except Exception as e:
+            logger.error(f"Error during retrieval: {str(e)}")
+            return []
