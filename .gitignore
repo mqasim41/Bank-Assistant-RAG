@@ -2,3 +2,4 @@
 *.log
 data/
 vector_store/
+node_modules/
