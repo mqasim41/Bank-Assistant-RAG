@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 import unicodedata
 import html
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Generator
 from .logger import setup_logger
 
 # Set up logger for this module
@@ -21,6 +21,11 @@ logger = setup_logger("bank_llm.ingest", "ingest.log")
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 INDEX_PATH = Path("vector_store/faiss.index")
 META_PATH = Path("vector_store/meta.pkl")
+
+# Chunking configuration
+MAX_CHUNK_SIZE = 1000  # Maximum characters per chunk
+MIN_CHUNK_SIZE = 100   # Minimum characters per chunk
+OVERLAP_SIZE = 50      # Number of characters to overlap between chunks
 
 # Enhanced PII detection patterns
 PII_PATTERNS = {
@@ -113,6 +118,66 @@ def flatten_json(obj, parent_key=""):
     else:
         yield f"{parent_key}: {obj}"
 
+def split_into_chunks(text: str) -> Generator[str, None, None]:
+    """
+    Split text into overlapping chunks based on semantic boundaries and size limits.
+    
+    Args:
+        text: The input text to split
+        
+    Yields:
+        Chunks of text that are semantically meaningful and within size limits
+    """
+    # First split by paragraphs
+    paragraphs = text.split('\n\n')
+    
+    current_chunk = []
+    current_size = 0
+    
+    for paragraph in paragraphs:
+        # If paragraph is too long, split it into sentences
+        if len(paragraph) > MAX_CHUNK_SIZE:
+            sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+            
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
+                    
+                # If adding this sentence would exceed max size, yield current chunk
+                if current_size + len(sentence) > MAX_CHUNK_SIZE and current_chunk:
+                    chunk = ' '.join(current_chunk)
+                    if len(chunk) >= MIN_CHUNK_SIZE:
+                        yield chunk
+                    
+                    # Start new chunk with overlap
+                    overlap_start = max(0, len(chunk) - OVERLAP_SIZE)
+                    current_chunk = [chunk[overlap_start:]]
+                    current_size = len(current_chunk[0])
+                
+                current_chunk.append(sentence)
+                current_size += len(sentence)
+        else:
+            # If adding this paragraph would exceed max size, yield current chunk
+            if current_size + len(paragraph) > MAX_CHUNK_SIZE and current_chunk:
+                chunk = ' '.join(current_chunk)
+                if len(chunk) >= MIN_CHUNK_SIZE:
+                    yield chunk
+                
+                # Start new chunk with overlap
+                overlap_start = max(0, len(chunk) - OVERLAP_SIZE)
+                current_chunk = [chunk[overlap_start:]]
+                current_size = len(current_chunk[0])
+            
+            current_chunk.append(paragraph)
+            current_size += len(paragraph)
+    
+    # Yield the final chunk if it exists
+    if current_chunk:
+        chunk = ' '.join(current_chunk)
+        if len(chunk) >= MIN_CHUNK_SIZE:
+            yield chunk
+
 def _read_generic(path: Path):
     suffix = path.suffix.lower()
     if suffix == ".json":
@@ -132,9 +197,11 @@ def _read_generic(path: Path):
     else:
         # for .txt and other files
         text = path.read_text(encoding="utf-8", errors="replace")
-        processed = process_chunk(text)
-        if processed:
-            yield processed
+        # Split text into chunks and process each chunk
+        for chunk in split_into_chunks(text):
+            processed = process_chunk(chunk)
+            if processed:
+                yield processed
 
 def build_or_update_index(dataset_dir: str):
     dataset_dir = Path(dataset_dir)

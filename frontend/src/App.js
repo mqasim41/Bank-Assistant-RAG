@@ -46,16 +46,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Bank Support Assistant</h1>
-          <p className="mt-2 text-gray-600">Ask any questions about our banking services</p>
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold text-gray-900 font-serif">Bank Support Assistant</h1>
+          <p className="mt-3 text-lg text-gray-600">Ask any questions about our banking services</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-white rounded-lg shadow-xl p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="question" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="question" className="block text-sm font-medium text-gray-700 mb-2">
                 Your Question
               </label>
               <div className="mt-1">
@@ -63,7 +63,7 @@ function App() {
                   id="question"
                   name="question"
                   rows={4}
-                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-4 font-sans text-base"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   placeholder="Type your question here..."
@@ -72,7 +72,7 @@ function App() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Upload Document (Optional)
               </label>
               <div className="mt-1 flex items-center">
@@ -93,7 +93,7 @@ function App() {
               <button
                 type="submit"
                 disabled={loading || !question.trim()}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
               >
                 {loading ? (
                   'Processing...'
@@ -108,10 +108,10 @@ function App() {
           </form>
 
           {response && (
-            <div className="mt-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-2">Response</h2>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">{response}</p>
+            <div className="mt-8">
+              <h2 className="text-xl font-medium text-gray-900 mb-3">Response</h2>
+              <div className="bg-gray-50 rounded-lg p-6">
+                <p className="text-gray-700 whitespace-pre-wrap text-base leading-relaxed">{response}</p>
               </div>
             </div>
           )}
