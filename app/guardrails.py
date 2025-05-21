@@ -48,11 +48,22 @@ class ContentGuardrails:
             ]
         }
 
+        # Offensive language patterns
+        self.offensive_patterns = {
+            'high_severity': [
+                r'\b(?:n[-\s]?i[-\s]?g[-\s]?g[-\s]?e[-\s]?r|f[-\s]?a[-\s]?g[-\s]?g[-\s]?o[-\s]?t|k[-\s]?i[-\s]?k[-\s]?e|s[-\s]?p[-\s]?i[-\s]?c|w[-\s]?o[-\s]?p|g[-\s]?o[-\s]?o[-\s]?k|s[-\s]?l[-\s]?o[-\s]?p|d[-\s]?y[-\s]?k[-\s]?e|t[-\s]?w[-\s]?a[-\s]?t|g[-\s]?r[-\s]?e[-\s]?a[-\s]?s[-\s]?e[-\s]?r|s[-\s]?p[-\s]?a[-\s]?z|r[-\s]?e[-\s]?t[-\s]?a[-\s]?r[-\s]?d|m[-\s]?o[-\s]?r[-\s]?o[-\s]?n|i[-\s]?d[-\s]?i[-\s]?o[-\s]?t)\b',
+                r'\b(?:f[-\s]?u[-\s]?c[-\s]?k|s[-\s]?h[-\s]?i[-\s]?t|a[-\s]?s[-\s]?s|b[-\s]?i[-\s]?t[-\s]?c[-\s]?h|c[-\s]?u[-\s]?n[-\s]?t|d[-\s]?i[-\s]?c[-\s]?k|p[-\s]?u[-\s]?s[-\s]?s[-\s]?y|t[-\s]?i[-\s]?t|w[-\s]?h[-\s]?o[-\s]?r[-\s]?e)\b'
+            ]
+        }
+
         # Compile keyword patterns
         self.keyword_patterns = {
             severity: re.compile('|'.join(f'\\b{kw}\\b' for kw in keywords), re.I)
             for severity, keywords in self.restricted_keywords.items()
         }
+
+        # Compile offensive patterns
+        self.offensive_regex = re.compile('|'.join(self.offensive_patterns['high_severity']), re.I)
 
         logger.info("ContentGuardrails initialized with security patterns and policies")
 
@@ -105,6 +116,22 @@ class ContentGuardrails:
         
         return violations
 
+    def check_offensive_language(self, text: str) -> List[PolicyViolation]:
+        """Check for offensive language and slurs in text."""
+        violations = []
+        
+        for match in self.offensive_regex.finditer(text):
+            context = text[max(0, match.start()-20):min(len(text), match.end()+20)]
+            violations.append(PolicyViolation(
+                type='offensive_language',
+                description='Detected offensive language or slur',
+                severity='high',
+                context=context
+            ))
+            logger.warning("Detected offensive language in text")
+
+        return violations
+
     def enforce_policies(self, text: str) -> tuple[str, List[PolicyViolation]]:
         """
         Enforce all content policies and return sanitized text with violations.
@@ -122,6 +149,7 @@ class ContentGuardrails:
         violations.extend(self.check_sensitive_info(text))
         violations.extend(self.check_restricted_keywords(text))
         violations.extend(self.check_content_length(text))
+        violations.extend(self.check_offensive_language(text))
 
         # Sanitize text based on violations
         sanitized_text = text
@@ -132,6 +160,9 @@ class ContentGuardrails:
             elif violation.type == 'restricted_keyword' and violation.severity == 'high':
                 # Redact high-severity keywords
                 sanitized_text = self.keyword_patterns['high_severity'].sub('[REDACTED]', sanitized_text)
+            elif violation.type == 'offensive_language':
+                # Redact offensive language
+                sanitized_text = self.offensive_regex.sub('[REDACTED]', sanitized_text)
 
         # Log summary of violations
         if violations:
